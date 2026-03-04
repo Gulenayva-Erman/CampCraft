@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fading Light — Camp</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090e;
+  --panel-bg:rgba(8,11,18,0.0);
+  --hex-empty:#1a1f2e;
+  --hex-active:#2a3050;
+  --hex-selected:#c8a840;
+  --hex-selected-bg:#2a2410;
+  --hex-dip:#3a2a50;
+  --connector:#4a5060;
+  --connector-lit:#c8a840;
+  --slot-bg:#141820;
+  --slot-border:#2a3040;
+  --slot-border-lit:#4a5060;
+  --result-border:#c8a840;
+  --text-gold:#c8a840;
+  --text-light:#d0c8b0;
+  --text-dim:#5a6070;
+  --text-muted:#2a3040;
+  --btn-bg:#e8e0c8;
+  --btn-text:#1a1408;
+  --quiver-hex:#2a3040;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);}
+body{display:flex;align-items:center;justify-content:center;font-family:'Crimson Pro',serif;color:var(--text-light);}
+
+/* Ambient bg */
+.bg-art{position:fixed;inset:0;pointer-events:none;background:
+  radial-gradient(ellipse 60% 80% at 60% 50%, rgba(20,40,80,0.35) 0%, transparent 70%),
+  radial-gradient(ellipse 40% 60% at 30% 60%, rgba(10,30,60,0.2) 0%, transparent 60%);
+}
+.bg-art::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 50% 40% at 55% 55%, rgba(0,80,120,0.08) 0%, transparent 60%);
+}
+
+/* LAYOUT */
+.screen{width:1400px;max-width:99vw;height:820px;max-height:99vh;display:grid;grid-template-columns:1fr 1px 480px;position:relative;padding:40px 48px;}
+.divider-v{background:linear-gradient(to bottom,transparent,rgba(80,90,110,0.4),transparent);margin:0 20px;}
+
+/* LEFT PANEL */
+.left{display:flex;flex-direction:column;gap:0;}
+.section-title{font-family:'Cinzel',serif;font-size:15px;font-weight:400;color:var(--text-gold);letter-spacing:.05em;margin-bottom:24px;display:flex;align-items:center;gap:16px;}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(to right,rgba(200,168,64,0.4),transparent);}
+
+/* CRAFT CHAIN */
+.craft-area{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:10px;}
+.chain-row{display:flex;align-items:center;gap:0;margin-bottom:32px;flex-wrap:nowrap;}
+
+/* HEXAGON */
+.hex-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;}
+.hex-btn{width:10px;height:10px;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:10px;padding:2px;transition:color .15s;}
+.hex-btn:hover{color:var(--text-gold);}
+.hex-btn:disabled{opacity:0;cursor:default;pointer-events:none;}
+.hex-outer{position:relative;width:76px;height:88px;cursor:pointer;transition:filter .2s;}
+.hex-outer svg{position:absolute;inset:0;width:100%;height:100%;}
+.hex-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px;z-index:1;}
+.hex-outer.empty .hex-icon{font-size:18px;}
+.hex-outer.active .hex-icon{font-size:24px;}
+.hex-outer.interacted{filter:drop-shadow(0 0 7px var(--hex-grp-color, rgba(200,168,64,.7)));}
+.hex-label{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);text-align:center;transition:color .2s;}
+.hex-wrap.interacted .hex-label{color:color-mix(in srgb,var(--hex-grp-color,var(--text-dim)) 90%,white);}
+
+/* CONNECTOR LINE */
+.connector{display:flex;align-items:center;width:40px;flex-shrink:0;margin-top:-8px;}
+.connector-line{width:100%;height:1px;background:var(--connector);position:relative;}
+.connector-line.lit{background:linear-gradient(to right,var(--connector-lit),var(--connector));}
+.connector-dot{width:4px;height:4px;border-radius:50%;background:var(--connector);flex-shrink:0;margin-top:-1px;}
+.connector-dot.lit{background:var(--connector-lit);box-shadow:0 0 6px var(--connector-lit);}
+
+/* RESULT in chain */
+.chain-result-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:-8px;flex-shrink:0;}
+.result-slot{width:96px;height:96px;border:2px solid var(--result-border);background:var(--slot-bg);display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;box-shadow:0 0 20px rgba(200,168,64,0.15),inset 0 0 20px rgba(0,0,0,0.5);}
+.result-slot::before,.result-slot::after{content:'';position:absolute;width:8px;height:8px;border-color:var(--result-border);border-style:solid;}
+.result-slot::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}
+.result-slot::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}
+.result-icon{font-size:36px;}
+.result-count{position:absolute;bottom:5px;right:7px;font-family:'Cinzel',serif;font-size:11px;color:var(--text-light);}
+
+/* Result info — now sits BELOW chain row */
+.result-info-row{display:flex;flex-direction:column;gap:4px;margin-bottom:16px;}
+.result-name{font-family:'Cinzel',serif;font-size:13px;color:var(--text-light);letter-spacing:.03em;}
+.result-effects{display:flex;flex-direction:row;gap:14px;flex-wrap:wrap;}
+.effect-line{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-dim);}
+.effect-dot{width:14px;height:14px;border-radius:50%;border:1px solid;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:7px;}
+.ef-dmg{border-color:rgba(200,120,60,.6);color:#c87840;}
+.ef-eff{border-color:rgba(80,160,80,.6);color:#50c050;}
+.ef-uti{border-color:rgba(200,168,64,.6);color:var(--text-gold);}
+
+/* CRAFT BUTTON */
+.craft-btn{
+  font-family:'Cinzel',serif;font-size:14px;font-weight:600;letter-spacing:.08em;
+  color:var(--btn-text);background:var(--btn-bg);
+  border:none;padding:11px 30px;cursor:pointer;
+  position:relative;
+  clip-path:polygon(8px 0%, calc(100% - 8px) 0%, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0% calc(100% - 8px), 0% 8px);
+  transition:background .15s,box-shadow .15s;
+  box-shadow:0 2px 12px rgba(0,0,0,0.6);
+  white-space:nowrap;
+}
+.craft-btn:hover{background:#f0e8d0;box-shadow:0 4px 20px rgba(0,0,0,0.8);}
+.craft-btn:active{transform:scale(.97);}
+.craft-btn:disabled{background:#3a3830;color:#5a5848;cursor:not-allowed;box-shadow:none;}
+
+/* INVENTORY */
+.inv-section{margin-top:auto;padding-top:20px;}
+.inv-grid{display:grid;grid-template-columns:repeat(11,1fr);gap:5px;}
+.inv-slot{
+  aspect-ratio:1;border:1px solid var(--slot-border);background:var(--slot-bg);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  cursor:default;transition:border-color .15s,background .15s,box-shadow .15s;
+  position:relative;
+}
+/* Per-group color variables — set inline per slot */
+.inv-slot.has-item{
+  cursor:default;
+  border-color: color-mix(in srgb, var(--grp-color, var(--slot-border-lit)) 60%, transparent);
+  background: color-mix(in srgb, var(--grp-color, var(--slot-bg)) 8%, var(--slot-bg));
+}
+.inv-slot.has-item .inv-icon{
+  color: color-mix(in srgb, var(--grp-color, var(--text-light)) 80%, white);
+}
+.inv-slot.clickable{cursor:pointer;}
+.inv-slot.clickable:hover{
+  border-color: color-mix(in srgb, var(--grp-color, var(--text-gold)) 90%, white) !important;
+  background: color-mix(in srgb, var(--grp-color, var(--slot-bg)) 14%, var(--slot-bg)) !important;
+}
+.inv-slot.clickable:active{transform:scale(.93);}
+.inv-slot.selected{
+  border-color: color-mix(in srgb, var(--grp-color, var(--text-gold)) 100%, white) !important;
+  background: color-mix(in srgb, var(--grp-color, var(--slot-bg)) 18%, var(--slot-bg)) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--grp-color, var(--text-gold)) 55%, transparent) !important;
+}
+
+/* Group color tokens */
+:root{
+  --grp-type: #6888b0;    /* steel blue  — Tip Type     */
+  --grp-ext:  #c07840;    /* ember orange — Tip Extension */
+  --grp-dip:  #5aaa6a;    /* toxic green  — Tip Dip      */
+}
+
+/* RIGHT PANEL */
+.right{display:flex;flex-direction:column;gap:0;padding-left:28px;}
+
+/* QUIVER */
+.quiver-section{margin-bottom:32px;}
+.quiver-slots{display:flex;gap:12px;align-items:flex-start;margin-top:4px;}
+
+/* Hexagonal quiver slot (first) */
+.q-hex-wrap{position:relative;width:90px;height:104px;flex-shrink:0;}
+.q-hex-wrap svg{position:absolute;inset:0;width:100%;height:100%;}
+.q-hex-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:1;}
+.q-hex-icon{font-size:22px;}
+.q-hex-count{font-family:'Cinzel',serif;font-size:11px;color:var(--text-light);}
+
+/* Regular quiver slots */
+.q-slot{width:90px;height:90px;border:1px solid var(--slot-border);background:var(--slot-bg);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;transition:border-color .15s;}
+.q-slot.filled{border-color:rgba(200,168,64,.3);}
+.q-slot-icon{font-size:22px;}
+.q-slot-count{font-family:'Cinzel',serif;font-size:11px;color:var(--text-light);}
+.q-slot-name{font-size:9px;color:var(--text-dim);text-align:center;padding:0 4px;line-height:1.2;}
+.q-slot.empty .q-slot-count{color:var(--text-muted);}
+.q-break{position:absolute;top:5px;right:7px;font-size:9px;color:var(--text-muted);cursor:pointer;transition:color .15s;line-height:1;}
+.q-break:hover{color:var(--text-gold);}
+.q-bar{position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--slot-border);}
+.q-bar-fill{height:100%;background:var(--text-gold);transition:width .3s;}
+
+/* STASH */
+.stash-section{flex:1;}
+.stash-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:4px;}
+.s-slot{aspect-ratio:1;border:1px solid var(--slot-border);background:var(--slot-bg);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;}
+.s-slot.filled{border-color:rgba(200,168,64,.25);}
+.s-slot-name{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:6px;font-family:'Cinzel',serif;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px;}
+.s-slot-count{position:absolute;top:3px;right:5px;font-family:'Cinzel',serif;font-size:8px;color:var(--text-dim);line-height:1;}
+
+/* DRAGGABLE QUIVER / STASH SLOTS */
+.q-slot.draggable{cursor:pointer;}
+.q-slot.drag-over{border-color:var(--text-gold)!important;box-shadow:0 0 14px rgba(200,168,64,.35);background:rgba(200,168,64,.06);}
+.q-slot.item-selected{border-color:var(--text-gold)!important;box-shadow:0 0 12px rgba(200,168,64,.4);background:rgba(200,168,64,.08);}
+.s-slot.draggable{cursor:pointer;}
+.s-slot.drag-over{border-color:var(--text-gold)!important;box-shadow:0 0 12px rgba(200,168,64,.3);background:rgba(200,168,64,.05);}
+.s-slot.item-selected{border-color:var(--text-gold)!important;box-shadow:0 0 10px rgba(200,168,64,.35);background:rgba(200,168,64,.07);}
+.drop-valid{border-color:rgba(200,168,64,.5)!important;}
+.inv-slot.item-selected{
+  border-color: color-mix(in srgb, var(--grp-color, var(--text-gold)) 100%, white) !important;
+  background: color-mix(in srgb, var(--grp-color, var(--slot-bg)) 18%, var(--slot-bg)) !important;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--grp-color, var(--text-gold)) 55%, transparent) !important;
+}
+
+/* DRAG GHOST */
+#dragGhost{
+  position:fixed;pointer-events:none;z-index:9999;
+  width:72px;height:72px;border:1px solid var(--text-gold);
+  background:rgba(14,18,24,.92);border-radius:4px;
+  display:none;align-items:center;justify-content:center;
+  font-size:24px;box-shadow:0 0 20px rgba(200,168,64,.4);
+  transform:translate(-50%,-50%);
+  transition:opacity .1s;
+}
+
+/* TOOLTIP */
+#tip{
+  position:fixed;pointer-events:none;z-index:10000;
+  background:rgba(8,11,18,0.97);
+  border:1px solid rgba(200,168,64,0.35);
+  padding:10px 13px;min-width:140px;max-width:220px;
+  opacity:0;transition:opacity .12s ease;
+  box-shadow:0 4px 24px rgba(0,0,0,.7);
+}
+#tip.show{opacity:1;}
+#tip.show.delay{transition:opacity .12s ease .3s;}
+.tip-title{font-family:'Cinzel',serif;font-size:12px;color:var(--text-gold);letter-spacing:.04em;margin-bottom:5px;}
+.tip-category{font-size:10px;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-bottom:6px;}
+.tip-desc{font-size:11px;color:var(--text-light);line-height:1.5;font-style:italic;}
+.tip-effect{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11px;}
+.tip-effect-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.tip-effect-dot.ef-dmg{background:#c87840;}
+.tip-effect-dot.ef-eff{background:#50c050;}
+.tip-effect-dot.ef-uti{background:var(--text-gold);}
+.tip-effect span{color:var(--text-light);}
+.tip-divider{height:1px;background:rgba(200,168,64,0.15);margin:6px 0;}
+.tip-hint{font-size:10px;color:var(--text-dim);font-style:italic;margin-top:4px;}
+.tip-count{font-family:'Cinzel',serif;font-size:11px;color:var(--text-dim);margin-top:3px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:#0e1218;border:1px solid rgba(200,168,64,.3);color:var(--text-light);font-size:12px;font-style:italic;padding:10px 20px;transition:transform .3s ease;pointer-events:none;white-space:nowrap;z-index:999;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+/* FLASH */
+#flash{position:fixed;inset:0;background:#c8a840;pointer-events:none;opacity:0;z-index:998;}
+@keyframes cf{0%{opacity:0}20%{opacity:.06}100%{opacity:0}}
+#flash.on{animation:cf .5s ease-out forwards;}
+</style>
+</head>
+<body>
+<div class="bg-art"></div>
+<div id="flash"></div>
+<div id="dragGhost"></div>
+<div id="tip"></div>
+
+<div class="screen">
+
+  <!-- LEFT -->
+  <div class="left">
+    <div class="section-title">Craft Arrow</div>
+
+    <div class="craft-area">
+      <!-- Chain: Wood + 3 hex slots + connector + result slot — all inline -->
+      <div class="chain-row" id="chainRow">
+        <!-- Built by JS — includes wood hex, 3 selectors, connectors, and result slot -->
+      </div>
+
+      <!-- Info + button below the chain -->
+      <div class="result-info-row">
+        <div class="result-name" id="resultName">Basic Arrow</div>
+        <div class="result-effects" id="resultEffects"></div>
+      </div>
+      <button class="craft-btn" id="craftBtn" onclick="doCraft()">Craft ×20</button>
+    </div>
+
+    <!-- Inventory -->
+    <div class="inv-section">
+      <div class="section-title">Inventory <span id="invCount" style="font-size:11px;color:var(--text-dim);margin-left:8px;"></span></div>
+      <div class="inv-grid" id="invGrid"></div>
+    </div>
+  </div>
+
+  <div class="divider-v"></div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="quiver-section">
+      <div class="section-title">Quiver</div>
+      <div class="quiver-slots" id="quiverSlots"></div>
+    </div>
+    <div class="stash-section">
+      <div class="section-title">Camp Stash <span id="stashCount" style="font-size:11px;color:var(--text-dim);margin-left:8px;"></span></div>
+      <div class="stash-grid" id="stashGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const SLOTS = [
+  { id:'type', label:'Tip Type', options:[
+    { key:'base',     icon:'✦',   label:'—',            color:'#3a4050', svgFill:'#1a1f2e' },
+    { key:'iron',     icon:'⚔',   label:'Iron',         color:'#9090a0', svgFill:'#252a38', effect:{ text:'Extra Damage', cls:'ef-dmg' } },
+    { key:'pellet',   icon:'◉',   label:'Pellet',       color:'#8090b0', svgFill:'#1e2535', effect:{ text:'Shrapnel',     cls:'ef-dmg' } },
+    { key:'obsidian', icon:'◆',   label:'Obsidian',     color:'#8060c0', svgFill:'#1e1830', effect:{ text:'Piercing',     cls:'ef-dmg' } },
+  ]},
+  { id:'ext', label:'Tip Ext.', options:[
+    { key:'base',      icon:'✦',  label:'—',            color:'#3a4050', svgFill:'#1a1f2e' },
+    { key:'gunpowder', icon:'💥', label:'Gunpowder',    color:'#c06030', svgFill:'#281810', effect:{ text:'Explosion',    cls:'ef-dmg' } },
+    { key:'spike',     icon:'⬡',  label:'Spike',        color:'#806040', svgFill:'#201808', effect:{ text:'Heavy Wound', cls:'ef-dmg' } },
+    { key:'flare',     icon:'✺',  label:'Flare',        color:'#c0a020', svgFill:'#282010', effect:{ text:'Distraction', cls:'ef-uti' } },
+  ]},
+  { id:'dip', label:'Tip Dip', options:[
+    { key:'base',     icon:'✦',   label:'—',            color:'#3a4050', svgFill:'#1a1f2e' },
+    { key:'spider',   icon:'✳',   label:'Spider Venom', color:'#50a050', svgFill:'#101e10', effect:{ text:'Paralysis',   cls:'ef-eff' } },
+    { key:'mushroom', icon:'❋',   label:'Mushroom',     color:'#9060b0', svgFill:'#1a1028', effect:{ text:'Confusion',   cls:'ef-eff' } },
+    { key:'snake',    icon:'⬠',   label:'Snake Venom',  color:'#40a060', svgFill:'#101e18', effect:{ text:'Dmg over Time',cls:'ef-eff'} },
+  ]},
+];
+
+// Inventory resource types available
+const RES_POOL = [
+  { key:'iron',      icon:'⚔', label:'Iron',         slot:'type' },
+  { key:'pellet',    icon:'◉', label:'Pellet',        slot:'type' },
+  { key:'obsidian',  icon:'◆', label:'Obsidian',      slot:'type' },
+  { key:'gunpowder', icon:'💥',label:'Gunpowder',     slot:'ext'  },
+  { key:'spike',     icon:'⬡', label:'Spike',         slot:'ext'  },
+  { key:'flare',     icon:'✺', label:'Flare',         slot:'ext'  },
+  { key:'spider',    icon:'✳', label:'Spider Venom',  slot:'dip'  },
+  { key:'mushroom',  icon:'❋', label:'Mushroom',      slot:'dip'  },
+  { key:'snake',     icon:'⬠', label:'Snake Venom',   slot:'dip'  },
+];
+
+// Group colors matching CSS tokens
+const GRP_COLOR = { type:'var(--grp-type)', ext:'var(--grp-ext)', dip:'var(--grp-dip)' };
+const GRP_LABEL = { type:'Tip Type', ext:'Tip Extension', dip:'Tip Dip' };
+
+const MAX_INV=33, MAX_Q_STACK=50, MAX_STASH=16;
+
+// State
+const selIdx = { type:0, ext:0, dip:0 }; // index into options array (0=base)
+const selInvIdx = { type:-1, ext:-1, dip:-1 }; // exact inventory index user clicked (-1 = none)
+// inv: array of resource key or null
+const inv = Array(MAX_INV).fill(null);
+// quiver[0]=fixed regular, [1-3]=free
+const quiver = [
+  { name:'Regular Arrow', count:32, fixed:true, typeKey:null,extKey:null,dipKey:null },
+  null, null, null
+];
+const stash = Array(MAX_STASH).fill(null);
+
+// Demo inventory
+const demo=['iron','iron','iron','pellet','pellet','pellet','obsidian','obsidian','obsidian','obsidian',
+            'gunpowder','gunpowder','gunpowder','gunpowder','gunpowder','spike','spike','flare',
+            'spider','spider','mushroom','mushroom','mushroom','snake','snake','iron','obsidian'];
+demo.forEach((k,i)=>{ if(i<MAX_INV) inv[i]=k; });
+
+// ── INVENTORY SORT ────────────────────────────────────────────────────────────
+// Sort priority: group (type=0, ext=1, dip=2), then position within group
+const SORT_ORDER = {
+  // Tip Type — group 0
+  iron:0, pellet:1, obsidian:2,
+  // Tip Extension — group 1
+  gunpowder:10, spike:11, flare:12,
+  // Tip Dip — group 2
+  spider:20, mushroom:21, snake:22,
+};
+
+function sortInv(){
+  const items=inv.filter(k=>k!==null);
+  items.sort((a,b)=>(SORT_ORDER[a]??99)-(SORT_ORDER[b]??99));
+  for(let i=0;i<MAX_INV;i++) inv[i]=i<items.length?items[i]:null;
+}
+
+sortInv(); // initial sort — must be after SORT_ORDER is defined
+
+// ── HEX SVG ───────────────────────────────────────────────────────────────────
+function hexSVG(fill, stroke, glow){
+  return `<svg viewBox="0 0 76 88" xmlns="http://www.w3.org/2000/svg">
+    <defs><filter id="hg${glow}"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <polygon points="38,2 74,21 74,67 38,86 2,67 2,21" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${glow?`filter="url(#hg${glow})"`:''}/>
+  </svg>`;
+}
+
+// ── BUILD CHAIN ───────────────────────────────────────────────────────────────
+function buildChain(){
+  const row = document.getElementById('chainRow');
+  row.innerHTML='';
+
+  // ── WOOD (fixed, first slot) ──
+  const woodWrap=document.createElement('div');
+  woodWrap.className='hex-wrap';
+  // spacer so it aligns with other hex-wraps that have up/down buttons
+  const spacerUp=document.createElement('div'); spacerUp.style.height='22px'; woodWrap.appendChild(spacerUp);
+  const woodHex=document.createElement('div');
+  woodHex.className='hex-outer active';
+  woodHex.title='Wood — always available at camp';
+  woodHex.innerHTML=hexSVG('#1e2210','#607040',false);
+  const woodIcon=document.createElement('div');
+  woodIcon.className='hex-icon'; woodIcon.textContent='🪵'; woodIcon.style.color='#8a9860';
+  woodHex.appendChild(woodIcon); woodWrap.appendChild(woodHex);
+  attachTip(woodHex, {
+    title: 'Wood',
+    category: 'Base Component',
+    desc: 'Always available at camp in unlimited supply. Required for every arrow.',
+    hint: 'Cannot be changed or removed.'
+  });
+  const spacerDown=document.createElement('div'); spacerDown.style.height='22px'; woodWrap.appendChild(spacerDown);
+  const woodLbl=document.createElement('div'); woodLbl.className='hex-label'; woodLbl.textContent='Wood'; woodWrap.appendChild(woodLbl);
+  row.appendChild(woodWrap);
+
+  // connector wood→type
+  row.appendChild(makeConnector(true));
+
+  // ── THREE SELECTION SLOTS ──
+  // Group colors for each slot (always visible, even when empty)
+  const HEX_GRP = { type:'#6888b0', ext:'#c07840', dip:'#5aaa6a' };
+
+  SLOTS.forEach((slot,si)=>{
+    const wrap=document.createElement('div');
+    wrap.className='hex-wrap';
+    wrap.dataset.slot=slot.id;
+
+    const opt=slot.options[selIdx[slot.id]];
+    const isBase=opt.key==='base';
+    const grpColor=HEX_GRP[slot.id];
+
+    // Always use group color for stroke; dim it when empty
+    const stroke = isBase
+      ? `color-mix(in srgb, ${grpColor} 45%, #1a1f2e)`
+      : grpColor;
+    const bgFill = isBase
+      ? `color-mix(in srgb, ${grpColor} 10%, #0e1018)`
+      : opt.svgFill;
+
+    const upBtn=document.createElement('button');
+    upBtn.className='hex-btn'; upBtn.textContent='▲';
+    upBtn.disabled=!canCycle(slot.id,-1);
+    upBtn.onclick=()=>cycleSlot(slot.id,-1);
+    wrap.appendChild(upBtn);
+
+    const hex=document.createElement('div');
+    // Add interacted class + CSS var when slot has a selection
+    hex.className='hex-outer '+(isBase?'empty':'active')+(isBase?'':' interacted');
+    if(!isBase) hex.style.setProperty('--hex-grp-color', grpColor);
+    if(!isBase) wrap.style.setProperty('--hex-grp-color', grpColor);
+    if(!isBase) wrap.classList.add('interacted');
+
+    hex.innerHTML=hexSVG(bgFill, stroke, false); // SVG glow off — we use CSS filter instead
+    const iconDiv=document.createElement('div');
+    iconDiv.className='hex-icon';
+    iconDiv.textContent=isBase ? slot.options[0].icon : opt.icon; // show faint base icon when empty
+    iconDiv.style.color = isBase
+      ? `color-mix(in srgb, ${grpColor} 30%, #2a3040)`
+      : opt.color||grpColor;
+    hex.appendChild(iconDiv); wrap.appendChild(hex);
+
+    // Tooltip for selection hex
+    attachTip(hex, ()=>{
+      const cur = slot_opt(slot.id);
+      if(cur.key==='base'){
+        return { title: slot.label, category: 'Optional Slot', desc: 'No component selected. Use ▲▼ or click an item in your inventory to assign one.', hint:'Leave empty for a basic arrow.' };
+      }
+      const t = RES_TIPS[cur.key];
+      if(!t) return null;
+      const count = inv.filter(k=>k===cur.key).length;
+      return { ...t, count:`In inventory: ${count}`, hint:'Will be consumed on craft.' };
+    });
+
+    const downBtn=document.createElement('button');
+    downBtn.className='hex-btn'; downBtn.textContent='▼';
+    downBtn.disabled=!canCycle(slot.id,1);
+    downBtn.onclick=()=>cycleSlot(slot.id,1);
+    wrap.appendChild(downBtn);
+
+    const lbl=document.createElement('div');
+    lbl.className='hex-label';
+    lbl.textContent=isBase?slot.label:opt.label;
+    lbl.style.color=isBase
+      ? `color-mix(in srgb, ${grpColor} 45%, var(--text-dim))`
+      : `color-mix(in srgb, ${grpColor} 90%, white)`;
+    wrap.appendChild(lbl);
+
+    row.appendChild(wrap);
+
+    // connector between selection slots (not after last)
+    if(si<SLOTS.length-1) row.appendChild(makeConnector(!isBase));
+  });
+
+  // connector to result
+  const anyActive=SLOTS.some(s=>slot_key(s.id)!=='base');
+  row.appendChild(makeConnector(anyActive));
+
+  // ── RESULT SLOT (inline at end of chain) ──
+  const resWrap=document.createElement('div');
+  resWrap.className='chain-result-wrap';
+  const spacerR=document.createElement('div'); spacerR.style.height='22px'; resWrap.appendChild(spacerR);
+
+  const resSlot=document.createElement('div');
+  resSlot.className='result-slot'; resSlot.id='resultSlot';
+  const resIcon=document.createElement('span'); resIcon.className='result-icon'; resIcon.id='resultIcon'; resIcon.textContent='🏹';
+  const resCount=document.createElement('span'); resCount.className='result-count'; resCount.id='resultCount'; resCount.textContent='×20';
+  resSlot.appendChild(resIcon); resSlot.appendChild(resCount);
+  // Tooltip for result slot
+  attachTip(resSlot, ()=>{
+    const typeOpt=slot_opt('type'), extOpt=slot_opt('ext'), dipOpt=slot_opt('dip');
+    const parts=[typeOpt,extOpt,dipOpt].filter(o=>o.key!=='base');
+    const nm=parts.length?parts.map(o=>o.label).join(' + '):'Wood only';
+    const effects=parts.map(o=>o.effect).filter(Boolean);
+    let h=`<div class="tip-title">${document.getElementById('resultName')?.textContent||'Basic Arrow'}</div>`;
+    h+=`<div class="tip-category">Crafted Arrow Preview</div>`;
+    h+=`<div class="tip-divider"></div>`;
+    if(!effects.length){
+      h+=`<div class="tip-desc">A standard arrow. Reliable, but nothing special.</div>`;
+    } else {
+      effects.forEach(e=>{ h+=`<div class="tip-effect"><div class="tip-effect-dot ${e.cls}"></div><span>${e.text}</span></div>`; });
+    }
+    h+=`<div class="tip-hint">Produces 20 arrows per craft.</div>`;
+    tip.innerHTML=h; return null; // already built
+  });
+  resWrap.appendChild(resSlot);
+  row.appendChild(resWrap);
+}
+
+function makeConnector(lit){
+  const conn=document.createElement('div');
+  conn.className='connector'; conn.style.marginTop='-8px';
+  conn.innerHTML=`<div class="connector-line${lit?' lit':''}"></div>`;
+  return conn;
+}
+
+function slot_key(slotId){ return SLOTS.find(s=>s.id===slotId).options[selIdx[slotId]].key; }
+function slot_opt(slotId){ return SLOTS.find(s=>s.id===slotId).options[selIdx[slotId]]; }
+
+function canCycle(slotId, dir){
+  const opts=SLOTS.find(s=>s.id===slotId).options;
+  const len=opts.length;
+  // Can we go that direction? Check if target has resource or is base
+  let ni=(selIdx[slotId]+dir+len)%len;
+  // Always allow cycling to base
+  if(opts[ni].key==='base') return true;
+  // Check if resource is in inventory
+  return inv.some(k=>k===opts[ni].key);
+}
+
+function cycleSlot(slotId, dir){
+  const opts=SLOTS.find(s=>s.id===slotId).options;
+  const len=opts.length;
+  let ni=(selIdx[slotId]+dir+len)%len;
+  // Skip if not available
+  if(opts[ni].key!=='base'&&!inv.some(k=>k===opts[ni].key)){
+    // Try next
+    for(let i=0;i<len;i++){
+      ni=(ni+dir+len)%len;
+      if(opts[ni].key==='base'||inv.some(k=>k===opts[ni].key)) break;
+    }
+  }
+  selIdx[slotId]=ni;
+  selInvIdx[slotId]=-1; // user switched via ▲▼, no pinned index
+  renderAll();
+}
+
+// ── TOOLTIP ENGINE ────────────────────────────────────────────────────────────
+const tip = document.getElementById('tip');
+let tipTarget = null;
+let tipDelayTimer = null;
+
+// Rich tooltip data per resource key
+const RES_TIPS = {
+  iron:      { title:'Iron',         category:'Tip Type',      desc:'Forged from ore found across the highlands. Strikes harder than wood.',       effect:'Extra Damage',    cls:'ef-dmg' },
+  pellet:    { title:'Pellet',       category:'Tip Type',      desc:'Scattered shot that fans outward on impact, striking multiple targets.',       effect:'Shrapnel',        cls:'ef-dmg' },
+  obsidian:  { title:'Obsidian',     category:'Tip Type',      desc:'Volcanic glass ground to a razor edge. Passes clean through the first target.',effect:'Piercing',        cls:'ef-dmg' },
+  gunpowder: { title:'Gunpowder',    category:'Tip Extension', desc:'Packed tight behind the tip. Detonates on contact with a solid surface.',     effect:'Explosion',       cls:'ef-dmg' },
+  spike:     { title:'Spike',        category:'Tip Extension', desc:'Barbed protrusion that lodges deep, tearing tissue with each movement.',       effect:'Heavy Wound',     cls:'ef-dmg' },
+  flare:     { title:'Flare',        category:'Tip Extension', desc:'Burns bright on impact. Draws the gaze of every enemy nearby.',               effect:'Distraction',     cls:'ef-uti' },
+  spider:    { title:'Spider Venom', category:'Tip Dip',       desc:'Extracted from the cave spiders of the eastern warrens. Seizes the muscles.', effect:'Paralysis',       cls:'ef-eff' },
+  mushroom:  { title:'Mushroom',     category:'Tip Dip',       desc:'Spores from the deep-cap fungus. Clouds judgment and distorts perception.',   effect:'Confusion',       cls:'ef-eff' },
+  snake:     { title:'Snake Venom',  category:'Tip Dip',       desc:'Slow-acting toxin harvested from serpents. Damage builds over time.',         effect:'Damage over Time', cls:'ef-eff' },
+};
+
+function buildTipHTML(content){
+  let h='';
+  if(content.title)    h+=`<div class="tip-title">${content.title}</div>`;
+  if(content.category) h+=`<div class="tip-category">${content.category}</div>`;
+  if(content.divider)  h+=`<div class="tip-divider"></div>`;
+  if(content.desc)     h+=`<div class="tip-desc">${content.desc}</div>`;
+  if(content.effect){
+    h+=`<div class="tip-effect"><div class="tip-effect-dot ${content.cls}"></div><span>${content.effect}</span></div>`;
+  }
+  if(content.count)    h+=`<div class="tip-count">${content.count}</div>`;
+  if(content.hint){
+    h+=`<div class="tip-divider"></div><div class="tip-hint">${content.hint}</div>`;
+  }
+  return h;
+}
+
+function showTip(el, content){
+  tip.innerHTML = buildTipHTML(content);
+  tip.classList.add('show','delay');
+  tipTarget = el;
+}
+
+function hideTip(){
+  tip.classList.remove('show','delay');
+  tipTarget = null;
+}
+
+// Follow cursor
+document.addEventListener('mousemove', ev=>{
+  if(!tip.classList.contains('show')) return;
+  positionTip(ev.clientX, ev.clientY);
+});
+
+function positionTip(x, y){
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  const vw = window.innerWidth,  vh = window.innerHeight;
+  const OFFSET = 14;
+  let lx = x + OFFSET, ly = y + OFFSET;
+  if(lx + tw > vw - 8) lx = x - tw - OFFSET;
+  if(ly + th > vh - 8) ly = y - th - OFFSET;
+  tip.style.left = lx + 'px';
+  tip.style.top  = ly + 'px';
+}
+
+function attachTip(el, contentFn){
+  el.addEventListener('mouseenter', ev=>{
+    clearTimeout(tipDelayTimer);
+    tipDelayTimer = setTimeout(()=>{
+      const c = typeof contentFn === 'function' ? contentFn() : contentFn;
+      if(c){
+        // Content object returned — use buildTipHTML
+        tip.innerHTML = buildTipHTML(c);
+      }
+      // If null, contentFn already wrote tip.innerHTML directly — just show it
+      tip.classList.add('show','delay');
+      tipTarget = el;
+      positionTip(ev.clientX, ev.clientY);
+    }, 160);
+  });
+  el.addEventListener('mousemove', ev=>{ if(tipTarget===el) positionTip(ev.clientX, ev.clientY); });
+  el.addEventListener('mouseleave', ()=>{ clearTimeout(tipDelayTimer); hideTip(); });
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderAll(){ buildChain(); renderResult(); renderInv(); renderQuiver(); renderStash(); }
+
+function renderResult(){
+  const typeOpt=slot_opt('type');
+  const extOpt=slot_opt('ext');
+  const dipOpt=slot_opt('dip');
+
+  const np=[dipOpt.key!=='base'?dipOpt.label:null, extOpt.key!=='base'?extOpt.label:null, typeOpt.key!=='base'?typeOpt.label:null].filter(Boolean);
+  const name=np.length?np.join(' ')+' Arrow':'Basic Arrow';
+
+  document.getElementById('resultName').textContent=name;
+
+  const effects=[];
+  if(typeOpt.effect) effects.push(typeOpt.effect);
+  if(extOpt.effect)  effects.push(extOpt.effect);
+  if(dipOpt.effect)  effects.push(dipOpt.effect);
+
+  document.getElementById('resultEffects').innerHTML=effects.map(e=>
+    `<div class="effect-line"><div class="effect-dot ${e.cls}">◈</div><span>${e.text}</span></div>`
+  ).join('');
+
+  // Update the result icon glow (slot is created fresh in buildChain, use getElementById)
+  const ri=document.getElementById('resultIcon');
+  if(ri){
+    const hasAny=np.length>0;
+    const glowColor=typeOpt.color||extOpt.color||dipOpt.color||null;
+    ri.style.filter=hasAny&&glowColor?`drop-shadow(0 0 8px ${glowColor})`:'none';
+  }
+
+  // Craft button — gray out only when ALL quiver free slots AND ALL stash slots are occupied
+  const freeQ=quiver.slice(1).some(q=>q===null||q.count<MAX_Q_STACK);
+  const stashFree=stash.some(s=>s===null);
+  const btn=document.getElementById('craftBtn');
+  btn.disabled=(!freeQ&&!stashFree);
+  btn.title='';
+  // Re-attach tip each render since btn is static
+  btn._tipAttached = btn._tipAttached || (() => {
+    attachTip(btn, ()=>{
+      if(btn.disabled) return { title:'Cannot Craft', category:'Craft Button', desc:'Both quiver and camp stash are full.', hint:'Drag arrows to make room.' };
+      const nm = document.getElementById('resultName')?.textContent || 'Basic Arrow';
+      return { title:`Craft ×20`, category:'Craft Button', desc:`Produce 20 × ${nm} and place them in your quiver.`, hint:'Consumes selected components.' };
+    });
+    return true;
+  })();
+}
+
+function renderInv(){
+  const g=document.getElementById('invGrid'); g.innerHTML='';
+  let filled=0;
+
+  // Highlight exactly the inventory index the user picked per slot.
+  const highlightedIndices=new Set();
+  ['type','ext','dip'].forEach(slotId=>{
+    const k=slot_key(slotId);
+    if(k==='base') return;
+    const pinned=selInvIdx[slotId];
+    if(pinned!==-1 && inv[pinned]===k){
+      highlightedIndices.add(pinned);
+    } else {
+      const fi=inv.findIndex((v,i)=>v===k&&!highlightedIndices.has(i));
+      if(fi!==-1) highlightedIndices.add(fi);
+    }
+  });
+
+  for(let i=0;i<MAX_INV;i++){
+    const k=inv[i];
+    const res=k?RES_POOL.find(r=>r.key===k):null;
+    const grpId=res?.slot||null;
+    const grpColor=grpId?GRP_COLOR[grpId]:null;
+
+    const d=document.createElement('div');
+    const isSelected=highlightedIndices.has(i);
+    const isItemSelected=!!(selectedItem && selectedItem.type==='inv' && selectedItem.idx===i);
+    const isClickable=!!(res && res.slot && res.slot!=='wood');
+
+    let cls='inv-slot';
+    if(k) cls+=' has-item';
+    if(isClickable) cls+=' clickable';
+    if(isSelected) cls+=' selected';
+    if(isItemSelected) cls+=' item-selected';
+    d.className=cls;
+
+    // Apply group color as CSS variable
+    if(grpColor) d.style.setProperty('--grp-color', grpColor);
+
+    if(k) filled++;
+
+    if(res){
+      // Wrap icon in span so we can color it independently
+      const iconSpan=document.createElement('span');
+      iconSpan.className='inv-icon';
+      iconSpan.textContent=res.icon;
+      d.appendChild(iconSpan);
+    }
+
+    if(isClickable){
+      d.addEventListener('click', ()=>selectInvItem(i, res.key, res.slot));
+      // Right-click selects for drop
+      d.addEventListener('contextmenu', ev=>{
+        ev.preventDefault();
+        if(selectedItem && selectedItem.type==='inv' && selectedItem.idx===i){
+          clearSelectedItem(); renderAll();
+        } else {
+          setSelectedItem('inv', i);
+        }
+      });
+      const t=RES_TIPS[res.key];
+      if(t) attachTip(d, ()=>{
+        const count=inv.filter(k=>k===res.key).length;
+        return { ...t, count:`In inventory: ${count}`, hint:'Left click: assign to craft · Right click: select for drop (Q)' };
+      });
+    }
+
+    g.appendChild(d);
+  }
+  document.getElementById('invCount').textContent=`${filled}/${MAX_INV}`;
+}
+
+// Click an inventory item → assign it to its craft slot
+function selectInvItem(invIdx, key, slotId){
+  const slotDef=SLOTS.find(s=>s.id===slotId);
+  if(!slotDef) return;
+  const optIdx=slotDef.options.findIndex(o=>o.key===key);
+  if(optIdx===-1) return;
+  selIdx[slotId]=optIdx;
+  selInvIdx[slotId]=invIdx; // remember the exact slot the user clicked
+  renderAll();
+}
+
+function renderQuiver(){
+  const g=document.getElementById('quiverSlots'); g.innerHTML='';
+  for(let i=0;i<4;i++){
+    const q=quiver[i];
+    if(i===0){
+      const wrap=document.createElement('div');
+      wrap.className='q-hex-wrap';
+      const count=q?q.count:0;
+      const stroke=count>0?'#707880':'#2a3040';
+      wrap.innerHTML=hexSVG('#1e2530',stroke,false);
+      wrap.innerHTML+=`<div class="q-hex-content"><span class="q-hex-icon">🏹</span><span class="q-hex-count">${count}/${MAX_Q_STACK}</span></div>`;
+      attachTip(wrap, {
+        title: 'Regular Arrows',
+        category: 'Quiver — Slot 1',
+        desc: 'Standard arrows. Always available in this fixed slot.',
+        count: `${count} / ${MAX_Q_STACK}`,
+        hint: 'This slot cannot be changed.'
+      });
+      g.appendChild(wrap);
+    } else {
+      const d=document.createElement('div');
+      if(q){
+        const pct=Math.round(q.count/MAX_Q_STACK*100);
+        const isQSel=!!(selectedItem&&selectedItem.type==='quiver'&&selectedItem.idx===i);
+        d.className='q-slot filled draggable'+(isQSel?' item-selected':'');
+        d.dataset.src='quiver'; d.dataset.idx=i;
+        d.innerHTML=`<span class="q-slot-icon">🏹</span><span class="q-slot-count">${q.count}/${MAX_Q_STACK}</span><span class="q-slot-name">${q.name}</span><div class="q-break" title="Break down">✕</div><div class="q-bar"><div class="q-bar-fill" style="width:${pct}%"></div></div>`;
+        d.querySelector('.q-break').addEventListener('click',ev=>{ ev.stopPropagation(); breakArrow(i); });
+        const tipParts=[];
+        if(q.typeKey){ const t=RES_TIPS[q.typeKey]; if(t) tipParts.push(t); }
+        if(q.extKey){  const t=RES_TIPS[q.extKey];  if(t) tipParts.push(t); }
+        if(q.dipKey){  const t=RES_TIPS[q.dipKey];  if(t) tipParts.push(t); }
+        attachTip(d, ()=>{
+          let h=`<div class="tip-title">${q.name}</div><div class="tip-category">Quiver — Slot ${i}</div><div class="tip-divider"></div>`;
+          if(!tipParts.length){ h+=`<div class="tip-desc">Standard arrows with no special properties.</div>`; }
+          else { tipParts.forEach(t=>{ h+=`<div class="tip-effect"><div class="tip-effect-dot ${t.cls}"></div><span>${t.effect}</span></div>`; }); }
+          h+=`<div class="tip-count">${q.count} / ${MAX_Q_STACK}</div>`;
+          h+=`<div class="tip-hint">Click: select · Drag: reorder · Q: drop · ✕: break down</div>`;
+          tip.innerHTML=h; return null;
+        });
+        attachDragSource(d,'quiver',i);
+        attachDropTarget(d,'quiver',i);
+      } else {
+        d.className='q-slot empty drop-valid';
+        d.dataset.src='quiver'; d.dataset.idx=i;
+        d.innerHTML=`<span class="q-slot-count" style="color:var(--text-muted)">—</span>`;
+        attachTip(d, { title:`Quiver — Slot ${i}`, category:'Empty Slot', desc:'Drag an arrow here, or craft a new type to fill it.', hint:'Holds up to 50 arrows.' });
+        attachDropTarget(d,'quiver',i);
+      }
+      g.appendChild(d);
+    }
+  }
+}
+
+function renderStash(){
+  const g=document.getElementById('stashGrid'); g.innerHTML='';
+  let filled=0;
+  for(let i=0;i<MAX_STASH;i++){
+    const s=stash[i];
+    const d=document.createElement('div');
+    if(s){
+      filled++;
+      const short=s.name.replace(' Arrow','').substring(0,8);
+      const isSSel=!!(selectedItem&&selectedItem.type==='stash'&&selectedItem.idx===i);
+      d.className='s-slot filled draggable'+(isSSel?' item-selected':'');
+      d.dataset.src='stash'; d.dataset.idx=i;
+      d.innerHTML=`🏹<span class="s-slot-count">${s.count}</span><span class="s-slot-name">${short}</span>`;
+      const tipParts2=[];
+      if(s.typeKey){ const t=RES_TIPS[s.typeKey]; if(t) tipParts2.push(t); }
+      if(s.extKey){  const t=RES_TIPS[s.extKey];  if(t) tipParts2.push(t); }
+      if(s.dipKey){  const t=RES_TIPS[s.dipKey];  if(t) tipParts2.push(t); }
+      attachTip(d, ()=>{
+        let h=`<div class="tip-title">${s.name}</div><div class="tip-category">Camp Stash</div><div class="tip-divider"></div>`;
+        if(!tipParts2.length){ h+=`<div class="tip-desc">Standard arrows with no special properties.</div>`; }
+        else { tipParts2.forEach(t=>{ h+=`<div class="tip-effect"><div class="tip-effect-dot ${t.cls}"></div><span>${t.effect}</span></div>`; }); }
+        h+=`<div class="tip-count">${s.count} arrows</div>`;
+        h+=`<div class="tip-hint">Click: select · Drag: move to quiver · Q: drop</div>`;
+        tip.innerHTML=h; return null;
+      });
+      attachDragSource(d,'stash',i);
+      attachDropTarget(d,'stash',i);
+    } else {
+      d.className='s-slot drop-valid';
+      d.dataset.src='stash'; d.dataset.idx=i;
+      attachTip(d, { title:'Stash Slot', category:'Camp Stash', desc:'Overflow storage for crafted arrows.', hint:'Holds up to 50 arrows per slot.' });
+      attachDropTarget(d,'stash',i);
+    }
+    g.appendChild(d);
+  }
+  document.getElementById('stashCount').textContent=`${filled}/${MAX_STASH}`;
+}
+
+// ── SELECTION STATE ───────────────────────────────────────────────────────────
+// Tracks the one item the player has "selected" for drop via Q
+// type: 'inv' | 'quiver' | 'stash'
+let selectedItem = null; // { type:'inv'|'quiver'|'stash', idx:int }
+
+function setSelectedItem(type, idx){
+  selectedItem = { type, idx };
+  renderAll();
+}
+
+function clearSelectedItem(){
+  selectedItem = null;
+}
+
+function dropSelected(){
+  if(!selectedItem) return;
+  const { type, idx } = selectedItem;
+  let label = '';
+  if(type === 'inv'){
+    const k = inv[idx];
+    if(!k) { clearSelectedItem(); return; }
+    label = RES_POOL.find(r=>r.key===k)?.label || k;
+    inv[idx] = null;
+    sortInv();
+    // reset craft slot if it was pinned to this index
+    ['type','ext','dip'].forEach(s=>{ if(selInvIdx[s]===idx){ selInvIdx[s]=-1; selIdx[s]=0; } });
+  } else if(type === 'quiver'){
+    const q = quiver[idx];
+    if(!q) { clearSelectedItem(); return; }
+    label = q.name;
+    quiver[idx] = null;
+  } else if(type === 'stash'){
+    const s = stash[idx];
+    if(!s) { clearSelectedItem(); return; }
+    label = s.name;
+    stash[idx] = null;
+  }
+  clearSelectedItem();
+  showToast(`${label} dropped.`);
+  renderAll();
+}
+
+// Q key → drop selected
+document.addEventListener('keydown', ev=>{
+  if(ev.key === 'q' || ev.key === 'Q'){
+    if(selectedItem) dropSelected();
+  }
+});
+
+// ── DRAG SYSTEM (pointer events) ─────────────────────────────────────────────
+const ghost=document.getElementById('dragGhost');
+let drag=null; // {src:'quiver'|'stash', idx:int, data:obj, el:Element}
+let currentDropEl=null;
+const DRAG_THRESHOLD = 5; // px — movement needed to commit to a drag
+
+function attachDragSource(el, src, idx){
+  el.addEventListener('pointerdown', ev=>{
+    if(ev.button !== 0) return;
+    if(ev.target.classList.contains('q-break')) return;
+    const data = src==='quiver' ? quiver[idx] : stash[idx];
+    if(!data) return;
+
+    const startX = ev.clientX, startY = ev.clientY;
+    let dragging = false;
+
+    function onMove(ev){
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      if(!dragging && Math.hypot(dx, dy) > DRAG_THRESHOLD){
+        // Committed to drag — suppress any pending selection
+        dragging = true;
+        clearSelectedItem();
+        hideTip();
+        drag = { src, idx, data, el };
+        ghost.textContent = '🏹';
+        ghost.style.display = 'flex';
+        el.style.opacity = '0.35';
+        document.addEventListener('pointermove', onDragMove);
+      }
+      if(dragging){
+        ghost.style.left = ev.clientX + 'px';
+        ghost.style.top  = ev.clientY + 'px';
+      }
+    }
+
+    function onUp(ev){
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+
+      if(dragging){
+        // Finish drag
+        ghost.style.display = 'none';
+        document.removeEventListener('pointermove', onDragMove);
+        el.style.opacity = '';
+        if(currentDropEl){
+          currentDropEl.classList.remove('drag-over');
+          const tgt = currentDropEl._dropTgt;
+          const tgtIdx = currentDropEl._dropIdx;
+          if(tgt && tgtIdx !== undefined) performDrop(src, idx, tgt, tgtIdx);
+          currentDropEl = null;
+        }
+        drag = null;
+      } else {
+        // Short tap — treat as selection toggle
+        if(selectedItem && selectedItem.type === src && selectedItem.idx === idx){
+          clearSelectedItem();
+          renderAll();
+        } else {
+          setSelectedItem(src, idx);
+        }
+      }
+    }
+
+    ev.preventDefault();
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  });
+}
+
+function attachDropTarget(el,tgt,idx){
+  el.addEventListener('pointerenter',()=>{
+    if(!drag) return;
+    if(currentDropEl) currentDropEl.classList.remove('drag-over');
+    currentDropEl=el;
+    el.classList.add('drag-over');
+  });
+  el.addEventListener('pointerleave',()=>{
+    el.classList.remove('drag-over');
+    if(currentDropEl===el) currentDropEl=null;
+  });
+  // store target info
+  el._dropTgt=tgt; el._dropIdx=idx;
+}
+
+function onDragMove(ev){
+  ghost.style.left=ev.clientX+'px';
+  ghost.style.top=ev.clientY+'px';
+}
+
+function performDrop(srcType, srcIdx, tgtType, tgtIdx){
+  // Get the dragged item
+  const draggedItem = srcType==='quiver' ? quiver[srcIdx] : stash[srcIdx];
+  if(!draggedItem) return;
+
+  // Get the item currently in target (may be null)
+  const targetItem = tgtType==='quiver' ? quiver[tgtIdx] : stash[tgtIdx];
+
+  // Same slot — do nothing
+  if(srcType===tgtType && srcIdx===tgtIdx) return;
+
+  if(!targetItem){
+    // Drop onto empty slot — simple move
+    if(tgtType==='quiver') quiver[tgtIdx]=draggedItem;
+    else stash[tgtIdx]=draggedItem;
+    if(srcType==='quiver') quiver[srcIdx]=null;
+    else stash[srcIdx]=null;
+  } else {
+    // Drop onto occupied slot — displace target
+    // Try to find an empty quiver free slot (1-3) for displaced item
+    const emptyQ=quiver.findIndex((q,i)=>i>0&&q===null&&!(tgtType==='quiver'&&i===tgtIdx)&&!(srcType==='quiver'&&i===srcIdx));
+    if(emptyQ!==-1){
+      // Move displaced to empty quiver slot
+      quiver[emptyQ]=targetItem;
+    } else {
+      // No empty quiver slot — send displaced to stash
+      const emptyS=stash.findIndex((s,i)=>s===null&&!(tgtType==='stash'&&i===tgtIdx)&&!(srcType==='stash'&&i===srcIdx));
+      if(emptyS!==-1){
+        stash[emptyS]=targetItem;
+        showToast(`${targetItem.name} moved to camp stash.`);
+      } else {
+        showToast('No space to displace existing arrows.');
+        return;
+      }
+    }
+    // Now place dragged item in target slot
+    if(tgtType==='quiver') quiver[tgtIdx]=draggedItem;
+    else stash[tgtIdx]=draggedItem;
+    // Clear source
+    if(srcType==='quiver') quiver[srcIdx]=null;
+    else stash[srcIdx]=null;
+  }
+
+  renderAll();
+}
+
+// ── CRAFT ─────────────────────────────────────────────────────────────────────
+function doCraft(){
+  const typeOpt=slot_opt('type');
+  const extOpt=slot_opt('ext');
+  const dipOpt=slot_opt('dip');
+  const typeKey=typeOpt.key==='base'?null:typeOpt.key;
+  const extKey=extOpt.key==='base'?null:extOpt.key;
+  const dipKey=dipOpt.key==='base'?null:dipOpt.key;
+
+  const np=[dipOpt.key!=='base'?dipOpt.label:null,extOpt.key!=='base'?extOpt.label:null,typeOpt.key!=='base'?typeOpt.label:null].filter(Boolean);
+  const name=np.length?np.join(' ')+' Arrow':'Basic Arrow';
+
+  // Remove resources from inventory — use exact pinned index if user clicked one
+  if(typeKey) removeInv(typeKey, selInvIdx.type);
+  if(extKey)  removeInv(extKey,  selInvIdx.ext);
+  if(dipKey)  removeInv(dipKey,  selInvIdx.dip);
+  sortInv();
+
+  // Reset selectors
+  selIdx.type=0; selIdx.ext=0; selIdx.dip=0;
+  selInvIdx.type=-1; selInvIdx.ext=-1; selInvIdx.dip=-1;
+
+  // Place 20 arrows
+  let remaining=20;
+  // Try stack onto matching free slot
+  for(let i=1;i<=3&&remaining>0;i++){
+    const q=quiver[i];
+    if(q&&q.typeKey===typeKey&&q.extKey===extKey&&q.dipKey===dipKey&&q.count<MAX_Q_STACK){
+      const add=Math.min(MAX_Q_STACK-q.count,remaining);
+      q.count+=add; remaining-=add;
+    }
+  }
+  // New free slot
+  while(remaining>0){
+    const ei=quiver.findIndex((q,i)=>i>0&&q===null);
+    if(ei!==-1){
+      const take=Math.min(MAX_Q_STACK,remaining);
+      quiver[ei]={name,count:take,typeKey,extKey,dipKey,fixed:false};
+      remaining-=take;
+    } else break;
+  }
+  // Overflow to stash
+  if(remaining>0){
+    const si=stash.findIndex(s=>s===null);
+    if(si!==-1){
+      stash[si]={name,count:remaining,typeKey,extKey,dipKey};
+      showToast(`Quiver full — ${remaining} sent to camp stash.`);
+    } else showToast('No space remaining.');
+    remaining=0;
+  }
+
+  doFlash();
+  if(remaining===0) showToast(`Crafted 20 × ${name}`);
+  renderAll();
+}
+
+function removeInv(key, pinnedIdx=-1){
+  // Use the exact pinned slot if it still holds the expected key
+  if(pinnedIdx!==-1 && inv[pinnedIdx]===key){
+    inv[pinnedIdx]=null;
+    return;
+  }
+  // Fallback: remove first matching slot
+  const i=inv.findIndex(k=>k===key);
+  if(i!==-1) inv[i]=null;
+}
+
+function breakArrow(i){
+  const q=quiver[i]; if(!q) return;
+  if(selectedItem&&selectedItem.type==='quiver'&&selectedItem.idx===i) clearSelectedItem();
+  const ret=[q.typeKey,q.extKey,q.dipKey].filter(Boolean);
+  ret.forEach(k=>{ const ei=inv.findIndex(s=>s===null); if(ei!==-1) inv[ei]=k; });
+  quiver[i]=null;
+  sortInv();
+  renderAll();
+  const labels=ret.map(k=>RES_POOL.find(r=>r.key===k)?.label).filter(Boolean);
+  showToast(labels.length?`Recovered: ${labels.join(', ')}`:'Arrows broken down.');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function doFlash(){ const f=document.getElementById('flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2800); }
+
+renderAll();
+</script>
+</body>
+</html>
